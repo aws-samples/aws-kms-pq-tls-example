@@ -1,6 +1,6 @@
-## AWS Kms Pq Tls Example
+## AWS KMS Post-quantum TLS Example
 
-Demo code to setup the Java SDK 2.0 to use Post-quantum TLS.
+Demo code to setup the Java SDK 2.0 to use Post-quantum TLS with KMS. See [this blog post](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/) for more info.
 
 ### Prequesites
 1. Maven installed
