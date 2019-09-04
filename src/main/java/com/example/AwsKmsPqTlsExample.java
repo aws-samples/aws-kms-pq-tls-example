@@ -57,9 +57,9 @@ public class AwsKmsPqTlsExample {
                                     .build()) {
 
                                 final ListKeysResponse response = asyncKMSClient.listKeys().get();
-                                log.info(() -> String.format("Found %d keys and %s have more pages.",
-                                        response.keys().size(), response.truncated()? "do" : "do not"));
-                                
+                                log.info(() -> String.format("Found %d keys and have%smore pages.",
+                                        response.keys().size(), response.truncated()? " " : " no "));
+
                                 for(KeyListEntry key : response.keys()){
                                     log.info(() -> key.keyArn());
                                 }

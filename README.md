@@ -8,10 +8,10 @@ Demo code to setup the Java SDK 2.0 to use Post-quantum TLS with KMS. See [this 
 ### Running the example
 ```$bash
 $ git clone https://github.com/aws-samples/aws-kms-pq-tls-example.git
-$ git clone https://github.com/alexw91/aws-sdk-java-v2.git --branch aws_crt
-$ # TODO use this instead git clone https://github.com/aws/aws-sdk-java-v2.git --branch aws-crt-dev-preview
+$ git clone https://github.com/aws/aws-sdk-java-v2.git --branch aws-crt-dev-preview
 $ cd aws-sdk-java-v2
-$ mvn clean install -P quick
+# This only builds the aws-crt-client, we can use the published Maven artifact for the rest of the SDK
+$ mvn clean install --projects :aws-crt-client --activate-profiles quick --also-make
 $ cd ../aws-kms-pq-tls-example
 $ mvn package
 $ java -jar target/aws-kms-pq-tls-example-1.0-jar-with-dependencies.jar
