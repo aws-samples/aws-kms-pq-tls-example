@@ -72,9 +72,7 @@ public class AwsKmsPqTlsExample {
                 .tlsCipherPreference(cipherPreferences)
                 .build();) {
             try (KmsAsyncClient asyncKMSClient = KmsAsyncClient.builder()
-//                                    .region(REGION)
                     .httpClient(awsCrtHttpClient)
-//                                    .credentialsProvider(CREDENTIALS_PROVIDER_CHAIN)
                     .build()) {
 
                 // Create an external key
