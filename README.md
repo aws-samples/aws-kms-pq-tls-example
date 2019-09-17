@@ -1,13 +1,28 @@
 ## AWS KMS Post-quantum TLS Example
 
-Demo code to setup the Java SDK 2.0 to use Post-quantum TLS with KMS. See [this blog post](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/) for more info.
+Demo code to configure the Java SDK 2.0 to use hybrid post-quantum TLS with KMS. For more information, see
+[this blog post](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/).
 
-This code shows how to depend on the new SDK and HTTP client, how to configure it, and then uses it for an import key test.
+This code shows how to create a dependency on the new AWS SDK for Java 2.0 and HTTP client and how to configure it to
+use hybrid post-quantum cipher suites. Then, it uses the configured KMS client in an import key test.
 
 ### Prequesites
-1. Java Development Kit 8 or later, Maven 3.1.1 or later, and Git 2.0 or later
-1. AWS credentials setup for your platform, see [Set Up AWS Credentials for Development](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/setup-credentials.html).
-    1. The credentials will need KMS CreateKey, GetParametersForImport, ImportKey, Encrypt, Decrypt, and ScheduleKeyDeletion permissions.
+* Software:
+    * Ubuntu 18.04 or Amazon Linux 2 or newer
+    * Java Development Kit 8 or newer
+    * Maven 3.1.1 or newer
+    * Git 2.0 or newer
+* AWS credentials set up for your platform, see [Set Up AWS Credentials for Development](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/setup-credentials.html)
+    * The caller needs the following permissions on the KMS customer master key:
+        * kms:CreateKey
+        * kms:Decrypt
+        * kms:Encrypt
+        * kms:GetParametersForImport
+        * kms:ImportKey
+        * kms:ScheduleKeyDeletion
+    * To allow CreateKey, use an IAM policy. To allow the other permissions, use a key policy, IAM policy, or a grant.
+        * See [Authentication and Access Control for AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/control-access.html)
+
 ### Running the example
 ```$bash
 $ git clone https://github.com/aws-samples/aws-kms-pq-tls-example.git
