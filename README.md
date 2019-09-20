@@ -1,10 +1,14 @@
 ## AWS KMS Post-quantum TLS Example
 
-Demo code to configure the Java SDK 2.0 to use hybrid post-quantum TLS with KMS. For more information, see
-[this blog post](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/).
+This repository is designed for working and tested code samples that show how to configure the Java SDK 2.0 to use
+hybrid post-quantum TLS with KMS. For more information, see
+[Using Post-Quantum TLS with KMS](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/) (blog) and
+[Using Hybrid Post-Quantum TLS with AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/pqtls.html)
+(documentation).
 
-This code shows how to create a dependency on the new AWS SDK for Java 2.0 and HTTP client and how to configure it to
-use hybrid post-quantum cipher suites. Then, it uses the configured KMS client in an import key test.
+
+This Java code shows how to create a dependency on the new AWS SDK for Java 2.0 and HTTP client and how to configure it
+to use hybrid post-quantum cipher suites. Then, it uses the configured KMS client in an import key test.
 
 ### Prequesites
 * Software:
@@ -18,7 +22,7 @@ use hybrid post-quantum cipher suites. Then, it uses the configured KMS client i
         * kms:Decrypt
         * kms:Encrypt
         * kms:GetParametersForImport
-        * kms:ImportKey
+        * kms:ImportKeyMaterial
         * kms:ScheduleKeyDeletion
     * To allow CreateKey, use an IAM policy. To allow the other permissions, use a key policy, IAM policy, or a grant.
         * See [Authentication and Access Control for AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/control-access.html)
@@ -29,8 +33,8 @@ $ git clone https://github.com/aws-samples/aws-kms-pq-tls-example.git
 $ git clone https://github.com/aws/aws-sdk-java-v2.git --branch aws-crt-dev-preview
 $ cd aws-sdk-java-v2
 
-# This builds and installs the a snapshot of the SDK (which includes the aws-crt-http-client) into your local Maven
-# repository. This demo uses the published Maven artifact for the rest of the SDK.
+# This builds and installs a snapshot (2.7.23-SNAPSHOT) of the SDK (which includes the aws-crt-http-client) into your
+# local Maven repository. This demo uses the published Maven artifact (2.7.36) for the rest of the SDK.
 $ mvn install -Pquick
 
 $ cd ../aws-kms-pq-tls-example

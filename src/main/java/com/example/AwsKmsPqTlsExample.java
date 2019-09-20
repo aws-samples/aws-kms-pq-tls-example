@@ -27,11 +27,12 @@ import software.amazon.awssdk.services.kms.KmsAsyncClient;
 import software.amazon.awssdk.services.kms.model.AlgorithmSpec;
 import software.amazon.awssdk.services.kms.model.CreateKeyRequest;
 import software.amazon.awssdk.services.kms.model.CreateKeyResponse;
+import software.amazon.awssdk.services.kms.model.DataKeySpec;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
 import software.amazon.awssdk.services.kms.model.DecryptResponse;
-import software.amazon.awssdk.services.kms.model.EncryptRequest;
-import software.amazon.awssdk.services.kms.model.EncryptResponse;
 import software.amazon.awssdk.services.kms.model.ExpirationModelType;
+import software.amazon.awssdk.services.kms.model.GenerateDataKeyRequest;
+import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
 import software.amazon.awssdk.services.kms.model.GetParametersForImportRequest;
 import software.amazon.awssdk.services.kms.model.GetParametersForImportResponse;
 import software.amazon.awssdk.services.kms.model.ImportKeyMaterialRequest;
@@ -42,7 +43,6 @@ import software.amazon.awssdk.services.kms.model.ScheduleKeyDeletionResponse;
 import software.amazon.awssdk.services.kms.model.WrappingKeySpec;
 import software.amazon.awssdk.utils.Logger;
 
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
@@ -75,7 +75,7 @@ public class AwsKmsPqTlsExample {
                 // Create a CMK with no key material
                 CreateKeyRequest createRequest = CreateKeyRequest.builder()
                         .origin(OriginType.EXTERNAL)
-                        .description("Test key for aws-kms-pq-tls-example. Feel free to delete this if there is an error.")
+                        .description("Test key for aws-kms-pq-tls-example. Feel free to delete this.")
                         .build();
                 CompletableFuture<CreateKeyResponse> createFuture = asyncKMSClient.createKey(createRequest);
                 CreateKeyResponse createResponse = createFuture.get();
@@ -91,28 +91,25 @@ public class AwsKmsPqTlsExample {
                 final CompletableFuture<GetParametersForImportResponse> getParametersFuture =
                         asyncKMSClient.getParametersForImport(getParametersRequest);
 
-                // Use the wrapping key to encrypt the local key material. Then use the token to import the wrapped key
-                // material into KMS.cd
+                /*
+                 * Creating an in memory AES key. You should never do this in production. With KMS Import Key you are
+                 * responsible for keeping a durable copy of the key.
+                 * https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html
+                 *
+                 * Use the wrapping key to encrypt the local key material. Then use the token to import the wrapped key
+                 * material into KMS.
+                 */
                 CompletableFuture<ImportKeyMaterialResponse> importFuture = getParametersFuture.thenCompose(parametersResult -> {
                     final SdkBytes importToken = parametersResult.importToken();
                     final byte[] publicKeyBytes = parametersResult.publicKey().asByteArray();
-                    LOG.error(() -> "Creating an in memory AES key. You should never do this in production! With KMS " +
-                            "Import Key you are responsible for keeping a durable copy of the key. " +
-                            "https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html");
 
                     // The plaintextAesKey exists only for the lifetime of this function. KMS deletes its plaintext copy
                     // of the key material within 10 minutes (600 seconds).
                     byte[] plaintextAesKey = new byte[AES_KEY_SIZE_BYTES];
                     SECURE_RANDOM.nextBytes(plaintextAesKey);
-                    LOG.info(() -> String.format("Encrypting in memory AES key [%s] to the CMK %s RSA public key [%s]",
-                            ENCODER.encodeToString(plaintextAesKey),
-                            keyId,
-                            ENCODER.encodeToString(publicKeyBytes)));
 
                     final RSAPublicKey rsaPublicKey = RSAUtils.decodeX509PublicKey(publicKeyBytes);
                     final byte[] encryptedAesKey = RSAUtils.encryptRSA(rsaPublicKey, plaintextAesKey);
-                    LOG.info(() -> String.format("Encrypted AES key is [%s]",
-                            ENCODER.encodeToString(encryptedAesKey)));
 
                     // Import the key material using the CMK ID, wrapped key material, and import token.
                     ImportKeyMaterialRequest importRequest = ImportKeyMaterialRequest.builder()
@@ -122,34 +119,38 @@ public class AwsKmsPqTlsExample {
                             .expirationModel(ExpirationModelType.KEY_MATERIAL_EXPIRES)
                             .validTo(Instant.now().plusSeconds(600))
                             .build();
+                    LOG.info(() -> "Importing key material using PQ TLS to protect wrapped AES key in transit to KMS");
                     return asyncKMSClient.importKeyMaterial(importRequest);
                 });
 
-                // Use the CMK with imported key material to encrypt the plaintext secret string.
-                CompletableFuture<EncryptResponse> encryptFuture = importFuture.thenCompose(importResult -> {
-                    LOG.info(() -> String.format("Encrypting the message [%s]", SECRET_STRING));
-                    EncryptRequest encryptRequest = EncryptRequest.builder()
+                // Use the CMK with imported key material to generate a data key.
+                CompletableFuture<GenerateDataKeyResponse> generateDataKeyFuture = importFuture.thenCompose(importResult -> {
+                    GenerateDataKeyRequest generateDataKeyRequest = GenerateDataKeyRequest.builder()
                             .keyId(keyId)
-                            .plaintext(SdkBytes.fromString(SECRET_STRING, StandardCharsets.US_ASCII))
+                            .keySpec(DataKeySpec.AES_256)
                             .build();
-                    return asyncKMSClient.encrypt(encryptRequest);
+                    LOG.info(() -> "Generating a data key using PQ TLS to protect the plaintext data key in transit from KMS");
+                    return asyncKMSClient.generateDataKey(generateDataKeyRequest);
                 });
 
-                // Now decrypt the ciphertext.
-                CompletableFuture<DecryptResponse> decryptFuture = encryptFuture.thenCompose(encryptResult -> {
-                    SdkBytes encryptedMessage = encryptResult.ciphertextBlob();
-                    LOG.info(() -> "Encrypted message is [%s]" + ENCODER.encodeToString(encryptedMessage.asByteArray()));
+                // Now decrypt the encrypted data key.
+                CompletableFuture<DecryptResponse> decryptFuture = generateDataKeyFuture.thenCompose(generateDataKeyResponse -> {
+                    // You can use the plaintext AES key to do client side encryption. You get the plaintext key by
+                    // calling generateDataKeyResponse.plaintext()
+                    SdkBytes encryptedDataKey = generateDataKeyResponse.ciphertextBlob();
                     DecryptRequest decryptRequest = DecryptRequest.builder()
-                            .ciphertextBlob(encryptedMessage)
+                            .ciphertextBlob(encryptedDataKey)
                             .build();
+                    LOG.info(() -> "Decrypting a KMS ciphertext using PQ TLS to protect the plaintext data in transit from KMS");
                     return asyncKMSClient.decrypt(decryptRequest);
                 });
 
-                // Schedule deletion of the CMK with imported key material. This key was just created for this test so
-                // we know we have no other ciphertexts encrypted with this CMK. After you delete the CMK, they will be
-                // unrecoverable.
+                /*
+                 * Schedule deletion of the CMK with imported key material. Because this CMK was created only for this
+                 * test, we will delete it as part of cleanup. After the CMK is deleted, any ciphertexts encrypted under
+                 * this CMK are permanently unrecoverable.
+                 */
                 CompletableFuture<ScheduleKeyDeletionResponse> deleteFuture = decryptFuture.thenCompose(decryptResult -> {
-                    LOG.info(() -> String.format("Decrypted the secret message to [%s]", decryptResult.plaintext().asString(StandardCharsets.US_ASCII)));
                     ScheduleKeyDeletionRequest deletionRequest = ScheduleKeyDeletionRequest.builder()
                             .keyId(keyId)
                             .pendingWindowInDays(7)
