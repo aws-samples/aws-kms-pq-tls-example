@@ -58,11 +58,11 @@ public class AwsKmsPqTlsExample {
     private static final String SECRET_STRING = "PQ TLS is awesome!";
 
     public static void main(String[] args) throws Exception {
-        LOG.info(() -> "Checking if system supports the hybrid post-quantum cipher suites.");
+        LOG.info(() -> "Checking if system supports the hybrid post-quantum cipher suites");
         if (TlsCipherPreference.TLS_CIPHER_KMS_PQ_TLSv1_0_2019_06.isSupported()) {
-            LOG.info(() -> "Hybrid post-quantum ciphers are supported and will be used.");
+            LOG.info(() -> "Hybrid post-quantum ciphers are supported and will be used");
         } else {
-            throw new UnsupportedOperationException("Hybrid post-quantum cipher suites are not supported.");
+            throw new UnsupportedOperationException("Hybrid post-quantum cipher suites are not supported");
         }
         try (SdkAsyncHttpClient awsCrtHttpClient = AwsCrtAsyncHttpClient.builder()
                 .tlsCipherPreference(TlsCipherPreference.TLS_CIPHER_KMS_PQ_TLSv1_0_2019_06)
