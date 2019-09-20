@@ -1,14 +1,23 @@
 ## AWS KMS Post-quantum TLS Example
 
-This repository is designed for working and tested code samples that show how to configure the Java SDK 2.0 to use
-hybrid post-quantum TLS with KMS. For more information, see
+This repository contains code samples that show how to configure the SDK 2.0 to use the AWS Common Runtime HTTP Client
+with hybrid post-quantum TLS with KMS. For more information, see
 [Using Post-Quantum TLS with KMS](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/) (blog) and
 [Using Hybrid Post-Quantum TLS with AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/pqtls.html)
 (documentation).
 
+These samples demonstrate how to use hybrid post-quantum TLS to perform sensitive KMS operations. We consider sensitive
+operations to be ones where confidential data is sent over the network that is not protected from quantum advisories.
+This includes:
+* ImportKey
+* GenerateDataKey
+* Encrypt
+* Decrypt
 
-This Java code shows how to create a dependency on the new AWS SDK for Java 2.0 and HTTP client and how to configure it
-to use hybrid post-quantum cipher suites. Then, it uses the configured KMS client in an import key test.
+A large scale quantum computer could be used to recover the TLS session key from classic TLS  key exchanges (RSA, ECDHE,
+and FFDHE). The TLS session key is used to encrypt the plaintext data as it is sent over the network. This would reveal
+the plaintext in the Encrypt request or the plaintext in the decrypt response. ImportKey's use of the wrapping RSA key
+does not protect against a quantum advisory. 
 
 ### Prequesites
 * Software:
