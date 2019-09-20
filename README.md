@@ -20,7 +20,7 @@ to use hybrid post-quantum cipher suites. Then, it uses the configured KMS clien
     * The caller needs the following permissions on the KMS customer master key:
         * kms:CreateKey
         * kms:Decrypt
-        * kms:Encrypt
+        * kms:GenerateDataKey
         * kms:GetParametersForImport
         * kms:ImportKeyMaterial
         * kms:ScheduleKeyDeletion
