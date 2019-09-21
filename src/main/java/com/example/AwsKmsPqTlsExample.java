@@ -54,7 +54,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class AwsKmsPqTlsExample {
     private static final Logger LOG = Logger.loggerFor(AwsKmsPqTlsExample.class);
-    private static Random SECURE_RANDOM = new SecureRandom();
+    private static final Random SECURE_RANDOM = new SecureRandom();
     private static final int AES_KEY_SIZE_BYTES = 256 / 8;
 
     public static void main(String[] args) throws Exception {

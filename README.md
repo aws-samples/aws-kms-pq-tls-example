@@ -1,23 +1,26 @@
 ## AWS KMS Post-quantum TLS Example
 
-This repository contains code samples that show how to configure the SDK 2.0 to use the AWS Common Runtime HTTP Client
+This repository contains code samples that show how to configure the AWS SDK 2.0 to use the AWS Common Runtime HTTP Client
 with hybrid post-quantum TLS with KMS. For more information, see
 [Using Post-Quantum TLS with KMS](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/) (blog) and
 [Using Hybrid Post-Quantum TLS with AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/pqtls.html)
 (documentation).
 
 These samples demonstrate how to use hybrid post-quantum TLS to perform sensitive KMS operations. We consider sensitive
-operations to be ones where confidential data is sent over the network that is not protected from quantum advisories.
-This includes:
-* ImportKey
-* GenerateDataKey
-* Encrypt
-* Decrypt
+operations to be ones where confidential data is sent over the network that is not protected from a quantum adversary.
+These include:
+* `ImportKey`
+* `GenerateDataKey`
+* `Encrypt`
+* `Decrypt`
 
-A large scale quantum computer could be used to recover the TLS session key from classic TLS  key exchanges (RSA, ECDHE,
-and FFDHE). The TLS session key is used to encrypt the plaintext data as it is sent over the network. This would reveal
-the plaintext in the Encrypt request or the plaintext in the decrypt response. ImportKey's use of the wrapping RSA key
-does not protect against a quantum advisory. 
+A large scale quantum computer could be used to recover the TLS session key from classic TLS key exchanges (ECDHE and
+FFDHE). The TLS session key is used to encrypt the data as it is sent over the network. We look at 4 examples in the KMS 
+API where sensitive data could be revealed without PQ TLS. In an `Encrypt` call the client sends a plaintext message
+to be encrypted with a KMS CMK. Without PQ TLS a quantum adversary could see this plaintext message. The same attack
+affects `Decrypt` and `GenerateDataKey`. In an `ImportKey` request the client sends a key wrapped with an RSA key.
+Without PQ TLS an attacker could recover the wrapped key and use another quantum algorithm to unwrap your key. Once they
+have the plaintext key you imported into a CMK they gain the ability to decrypt any ciphertext that uses the CMK.
 
 ### Prequesites
 * Software:
