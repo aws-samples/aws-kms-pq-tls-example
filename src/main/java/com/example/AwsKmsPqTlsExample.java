@@ -49,8 +49,8 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
 /*
- * This Java code shows how to configure AWS Java SDK 2.0 with the AWS Common Runtime (AWS CRT) HTTP client. Then, it
- * uses the KMS client to import a key, generate a data key, and decrypt the encrypted data key.
+ * This Java code shows how to configure the AWS Java SDK 2.0 with the AWS Common Runtime (AWS CRT) HTTP client with PQ
+ * cipher suites. Then, it uses the KMS client to import a key, generate a data key, and decrypt the encrypted data key.
  */
 public class AwsKmsPqTlsExample {
     private static final Logger LOG = Logger.loggerFor(AwsKmsPqTlsExample.class);
@@ -68,7 +68,7 @@ public class AwsKmsPqTlsExample {
         }
 
         /*
-         * Setup the HTTP client and SDK for use in the rest of the demo. We've already checked that the
+         * Setup a HTTP client and SDK that will be used in the rest of the demo. We've already checked that the
          * TLS_CIPHER_KMS_PQ_TLSv1_0_2019_06 cipher suite is supported, if you attempt to use it on an unsupported
          * platform you will encounter a runtime exception.
          */
@@ -84,7 +84,7 @@ public class AwsKmsPqTlsExample {
         /*
          * Import key workflow with hybrid post-quantum TLS
          *
-         * Step 1: Create a CMK with no key material
+         * Step 1: Create an External CMK with no key material
          */
         CreateKeyRequest createRequest = CreateKeyRequest.builder()
                 .origin(OriginType.EXTERNAL)
@@ -127,18 +127,19 @@ public class AwsKmsPqTlsExample {
 
         /*
          * Use the wrapping key to encrypt the local key material. Then use the token to import the wrapped key
-         * material into KMS. A large scale quantum computer would be able to decrypt the RSA wrapped key and
+         * material into KMS. A large scale quantum computer would be able to decrypt the RSA wrapped key and recover
+         * your plaintext AES key.
          */
         RSAPublicKey rsaPublicKey = RSAUtils.decodeX509PublicKey(publicKeyBytes);
         byte[] encryptedAesKey = RSAUtils.encryptRSA(rsaPublicKey, plaintextAesKey);
 
         /*
          * Step 4: Import the key material using the CMK ID, wrapped key material, and import token. This is the
-         * important call to protect. Your local AES key is leaving your computer and sent over the network wrapped by
-         * a RSA public key and encrypted with the TLS connection.
+         * important call to protect. Your AES key is leaving your computer and sent over the network wrapped by a RSA
+         * public key and encrypted with the TLS connection.
          *
-         * This AES key will be used for all KMS Crypto operations when you use this CMK. If this key is compromised all
-         * ciphertexts from KMS are also compromised.
+         * This AES key will be used for all KMS cryptographic operations when you use this CMK. If this key is
+         * compromised all ciphertexts from KMS are also compromised.
          */
         ImportKeyMaterialRequest importRequest = ImportKeyMaterialRequest.builder()
                 .keyId(keyId)
@@ -147,7 +148,7 @@ public class AwsKmsPqTlsExample {
                 .expirationModel(ExpirationModelType.KEY_MATERIAL_EXPIRES)
                 .validTo(Instant.now().plusSeconds(600))
                 .build();
-        LOG.info(() -> String.format("Importing key material into CMK %s using PQ TLS to protect wrapped AES key in" +
+        LOG.info(() -> String.format("Importing key material into CMK %s using PQ TLS to protect wrapped AES key in " +
                 "transit to KMS", keyId));
         asyncKMSClient.importKeyMaterial(importRequest).get();
 
@@ -156,8 +157,8 @@ public class AwsKmsPqTlsExample {
          * of CMK (AWS_KMS, EXTERNAL, or AWS_CLOUDHSM). This will reuse the above EXTERNAL CMK.
          *
          * Step 1: Generate a data key, KMS GenerateDataKey returns the plaintext AES key and an encrypted copy that is
-         * encrypted with the CMK. It is our responsibility to keep the ciphertext so the plaintext data key can be
-         * retrieved in the future.
+         * encrypted by the CMK using AES-GCM. It is our responsibility to keep the ciphertext so the plaintext data key
+         * can be retrieved in the future.
          */
         GenerateDataKeyRequest generateDataKeyRequest = GenerateDataKeyRequest.builder()
                 .keyId(keyId)

@@ -17,10 +17,11 @@ These include:
 A large scale quantum computer could be used to recover the TLS session key from classic TLS key exchanges (ECDHE and
 FFDHE). The TLS session key is used to encrypt the data as it is sent over the network. We look at 4 examples in the KMS 
 API where sensitive data could be revealed without PQ TLS. In an `Encrypt` call the client sends a plaintext message
-to be encrypted with a KMS CMK. Without PQ TLS a quantum adversary could see this plaintext message. The same attack
-affects `Decrypt` and `GenerateDataKey`. In an `ImportKey` request the client sends a key wrapped with an RSA key.
-Without PQ TLS an attacker could recover the wrapped key and use another quantum algorithm to unwrap your key. Once they
-have the plaintext key you imported into a CMK they gain the ability to decrypt any ciphertext that uses the CMK.
+to be encrypted with a KMS CMK. Without PQ TLS a quantum adversary could recover this plaintext message. The same attack
+affects `Decrypt` and `GenerateDataKey` when the server sends sensitive plaintext to the client. In an `ImportKey`
+request the client sends an AES key wrapped with an RSA key to KMS. Without PQ TLS an attacker could recover the wrapped
+key and use another quantum algorithm to unwrap your key. Once they have the plaintext key you imported into a CMK they
+gain the ability to decrypt any ciphertext that uses that CMK.
 
 ### Prequesites
 * Software:
