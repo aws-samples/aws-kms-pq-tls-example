@@ -149,8 +149,8 @@ public class AwsKmsPqTlsExample {
                 .expirationModel(ExpirationModelType.KEY_MATERIAL_EXPIRES)
                 .validTo(Instant.now().plusSeconds(600))
                 .build();
-        LOG.info(() -> String.format("Importing key material into CMK %s using PQ TLS to protect wrapped AES key in " +
-                "transit to KMS", keyId));
+        LOG.info(() -> String.format("Importing key material into CMK %s. Using PQ TLS to protect RSA-wrapped AES key " +
+                "in transit", keyId));
         asyncKMSClient.importKeyMaterial(importRequest).get();
 
         /*
