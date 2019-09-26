@@ -74,7 +74,7 @@ public class AwsKmsPqTlsExample {
                 .tlsCipherPreference(TlsCipherPreference.TLS_CIPHER_KMS_PQ_TLSv1_0_2019_06)
                 .build();
         /*
-         * Set up a KMS Java SDK 2.0 which will use hybrid post-quantum TLS for all connections to KMS.
+         * Set up a Java SDK 2.0 KMS Client which will use hybrid post-quantum TLS for all connections to KMS.
          */
         KmsAsyncClient asyncKMSClient = KmsAsyncClient.builder()
                 .httpClient(awsCrtHttpClient)
