@@ -8,11 +8,13 @@ with hybrid post-quantum (PQ) TLS with AWS Key Management Service (KMS). For mor
 
 These samples demonstrate how to use hybrid post-quantum TLS to perform sensitive KMS operations. We consider sensitive
 operations to be ones where confidential data is sent over the network that is not protected from a quantum adversary.
-These include:
-* `ImportKey`
+These include, but may not be limited to:
+* `ImportKeyMaterial`
 * `GenerateDataKey`
 * `Encrypt`
 * `Decrypt`
+* `CreateCustomKeyStore`
+* `UpdateCustomKeyStore`
 
 A large-scale quantum computer could recover the TLS session key from classic TLS key exchanges (ECDHE and FFDHE). The
 TLS session key is used to encrypt data as it is sent over the network. We demonstrate how to configure an HTTP client
@@ -26,10 +28,11 @@ the following procedure:
 1. Use the TLS session key to decrypt the session data
 1. Inspect the session data and recover the plaintext message from the request
 
-`Decrypt` and `GenerateDataKey` are vulnerable to same type of attack when KMS returns sensitive plaintext to the client
-over TLS. In an `ImportKey` request the client sends an AES key wrapped with RSA to KMS. Without PQ TLS, an attacker
-could recover the wrapped key using the steps above, and use another quantum algorithm to break RSA and recover the
-plaintext AES key. After they have the plaintext key they can decrypt any ciphertext from KMS that uses the key.
+`Decrypt`, `GenerateDataKey`, `CreateCustomKeyStore`, and `UpdateCustomKeyStore` are vulnerable to the same type of attack,
+when sensitive plaintext is either transmitted by the client or returned by KMS over TLS. In an `ImportKeyMaterial` request,
+the client sends an AES key wrapped with RSA to KMS. Without PQ TLS, an attacker could recover the wrapped key using the
+steps above, and use another quantum algorithm to break RSA and recover the plaintext AES key. After they have the plaintext
+key they can decrypt any ciphertext from KMS that uses the key.
 
 ### Prerequisites for the Java example
 * Software:
