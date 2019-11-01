@@ -42,10 +42,9 @@ AES key. After they have the plaintext key they can decrypt any ciphertext from 
 * Software:
   *   Ubuntu 18.04 or Amazon Linux 2 or later
   *   x86 based processor
-  *   Java Development Kit 8 or later, `sudo apt install openjdk-8-jdk` (OpenJDK 8 is pre-installed on AWS EC2 Ubuntu
-      18.04 hosts)
-  *   Maven 3.1.1 or later, `sudo apt install maven`
-  *   Git 2.0 or later, `sudo apt install git` (Git 2.17 is pre-installed on AWS EC2 Ubuntu 18.04 hosts)
+  *   Java Development Kit 8 or later
+  *   Maven 3.1.1 or later
+  *   Git 2.0 or later
 * AWS credentials set up for your platform, see [Set Up AWS Credentials for Development](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/setup-credentials.html)
     * The caller needs the following KMS permissions in an IAM policy:
         * kms:CreateKey
