@@ -16,7 +16,7 @@ These include, but may not be limited to:
 * `CreateCustomKeyStore`
 * `UpdateCustomKeyStore`
 
-If a large-scale quantum computer is ever built it could recover the TLS session key from classic TLS key exchanges
+If a large-scale quantum computer is ever built, it could recover the TLS session key from classic TLS key exchanges
 (RSA, ECDHE and FFDHE). The TLS session key is used to encrypt data as it is sent over the network. We demonstrate how
 to configure an HTTP client to use PQ TLS with KMS, which prevents a quantum computer from recovering sensitive data.
 
