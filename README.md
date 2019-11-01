@@ -6,6 +6,13 @@ Client with hybrid post-quantum (PQ) TLS with AWS Key Management Service (KMS). 
 [Using Hybrid Post-Quantum TLS with AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/pqtls.html)
 (documentation).
 
+If a large-scale quantum computer is ever built, it could recover the TLS session key from classic TLS key exchanges
+(RSA, ECDHE and FFDHE). The TLS session key is used to encrypt data as it is sent over the network. As of 2019, the
+largest quantum computer contains fewer than 100 qubits and lacks error correction capability. It is believed you would
+need millions of noisy qubits to successfully run Shor's algorithm on keys the size that are used today. See
+[How to factor 2048 bit RSA integers in 8 hours using 20 million noisy qubits](https://arxiv.org/pdf/1905.09749.pdf) for
+more information on the analysis of quantum computing hardware requirements.
+
 These samples demonstrate how to use hybrid post-quantum TLS to perform sensitive KMS operations. We consider sensitive
 operations to be ones where confidential data is sent over the network that is not protected from a quantum adversary.
 These include, but may not be limited to:
@@ -15,16 +22,6 @@ These include, but may not be limited to:
 * `Decrypt`
 * `CreateCustomKeyStore`
 * `UpdateCustomKeyStore`
-
-If a large-scale quantum computer is ever built, it could recover the TLS session key from classic TLS key exchanges
-(RSA, ECDHE and FFDHE). The TLS session key is used to encrypt data as it is sent over the network. We demonstrate how
-to configure an HTTP client to use PQ TLS with KMS, which prevents a quantum computer from recovering sensitive data.
-
-As of 2019, the largest quantum computer contains fewer than 100 qubits and lacks error correction capability. It is
-believed you would need millions of noisy qubits to successfully run Shor's algorithm on keys the size that are used
-today. See
-[How to factor 2048 bit RSA integers in 8 hours using 20 million noisy qubits](https://arxiv.org/pdf/1905.09749.pdf) for
-more information on the analysis of quantum computing hardware requirements.
 
 For example, in an `Encrypt` call, the client sends a plaintext message to be encrypted with a KMS CMK. The message is
 always protected in transit by TLS, but without PQ TLS, a quantum adversary could recover the plaintext message by using
