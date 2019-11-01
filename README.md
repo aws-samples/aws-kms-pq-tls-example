@@ -20,7 +20,7 @@ If a large-scale quantum computer is ever built, it could recover the TLS sessio
 (RSA, ECDHE and FFDHE). The TLS session key is used to encrypt data as it is sent over the network. We demonstrate how
 to configure an HTTP client to use PQ TLS with KMS, which prevents a quantum computer from recovering sensitive data.
 
-As of 2019 the largest quantum computer contains fewer than 100 qubits and lacks error correction capability. It is
+As of 2019, the largest quantum computer contains fewer than 100 qubits and lacks error correction capability. It is
 believed you would need millions of noisy qubits to successfully run Shor's algorithm on keys the size that are used
 today. See
 [How to factor 2048 bit RSA integers in 8 hours using 20 million noisy qubits](https://arxiv.org/pdf/1905.09749.pdf) for
