@@ -2,7 +2,7 @@
 
 This repository contains code samples that show how to configure the AWS SDK 2.0 to use the AWS Common Runtime HTTP 
 Client with hybrid post-quantum (PQ) TLS with AWS Key Management Service (KMS). For more information, see
-[Using Post-Quantum TLS with KMS](https://aws.amazon.com/blogs/security/using-post-quantum-tls-with-kms/) (blog) and
+[Using Post-Quantum TLS with KMS](https://aws.amazon.com/blogs/security/post-quantum-tls-now-supported-in-aws-kms/) (blog) and
 [Using Hybrid Post-Quantum TLS with AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/pqtls.html)
 (documentation).
 
