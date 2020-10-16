@@ -61,14 +61,7 @@ AES key. After they have the plaintext key they can decrypt any ciphertext from 
 ### Running the example
 ```$bash
 $ git clone https://github.com/aws-samples/aws-kms-pq-tls-example.git
-$ git clone https://github.com/aws/aws-sdk-java-v2.git --branch aws-crt-dev-preview
-$ cd aws-sdk-java-v2
-
-# This builds and installs a snapshot (2.10.7-SNAPSHOT) of the Java SDK 2.0, which includes the aws-crt-client, into your
-# local Maven repository. This example uses the published Maven artifact (2.10.7) for the rest of the SDK.
-$ mvn install -Pquick
-
-$ cd ../aws-kms-pq-tls-example
+$ cd aws-kms-pq-tls-example
 $ mvn package
 $ java -jar target/aws-kms-pq-tls-example-1.0-jar-with-dependencies.jar
 ```

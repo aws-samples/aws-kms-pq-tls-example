@@ -29,7 +29,7 @@
             <dependency><!-- This controls the version for the rest of the SDK: services, logging, request signing -->
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
-                <version>2.10.7</version>
+                <version>2.14.13</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -41,9 +41,9 @@
             <artifactId>kms</artifactId><!-- The kms artifact comes from the above BOM and uses that version -->
         </dependency>
         <dependency>
-            <groupId>software.amazon.awssdk</groupId><!-- This is the artifact built locally -->
+            <groupId>software.amazon.awssdk</groupId>
             <artifactId>aws-crt-client</artifactId>
-            <version>2.10.7-SNAPSHOT</version>
+            <version>2.14.13-PREVIEW</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
