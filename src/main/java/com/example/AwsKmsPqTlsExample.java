@@ -61,7 +61,7 @@ public class AwsKmsPqTlsExample {
         /*
          * Check preconditions before continuing. The AWS CRT supports hybrid post-quantum TLS on Linux systems only.
          */
-        if (TlsCipherPreference.TLS_CIPHER_KMS_PQ_TLSv1_0_2019_06.isSupported()) {
+        if (TlsCipherPreference.TLS_CIPHER_PREF_KMS_PQ_TLSv1_0_2020_07.isSupported()) {
             LOG.info(() -> "Hybrid post-quantum ciphers are supported and will be used");
         } else {
             throw new UnsupportedOperationException("Hybrid post-quantum cipher suites are supported only on Linux systems");
@@ -71,7 +71,7 @@ public class AwsKmsPqTlsExample {
          * Set up a PQ TLS HTTP client that will be used in the rest of the example.
          */
         SdkAsyncHttpClient awsCrtHttpClient = AwsCrtAsyncHttpClient.builder()
-                .tlsCipherPreference(TlsCipherPreference.TLS_CIPHER_KMS_PQ_TLSv1_0_2019_06)
+                .tlsCipherPreference(TlsCipherPreference.TLS_CIPHER_PREF_KMS_PQ_TLSv1_0_2020_07)
                 .build();
         /*
          * Set up a Java SDK 2.0 KMS Client which will use hybrid post-quantum TLS for all connections to KMS.
