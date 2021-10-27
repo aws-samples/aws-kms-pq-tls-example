@@ -47,6 +47,8 @@ import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.Random;
 
+import static software.amazon.awssdk.crt.io.TlsCipherPreference.*;
+
 /*
  * This Java code shows how to configure the AWS Java SDK 2.0 with the AWS Common Runtime (CRT) HTTP client and PQ
  * cipher suites. Then, it uses the KMS client to import key material into a customer master key (CMK), generate a data
@@ -58,20 +60,23 @@ public class AwsKmsPqTlsExample {
     private static final int AES_KEY_SIZE_BYTES = 256 / 8;
 
     public static void main(String[] args) throws Exception {
+        TlsCipherPreference tlsCipherPreference = TLS_CIPHER_PREF_PQ_TLSv1_0_2021_05;
+
         /*
          * Check preconditions before continuing. The AWS CRT supports hybrid post-quantum TLS on Linux systems only.
          */
-        if (TlsCipherPreference.TLS_CIPHER_PREF_KMS_PQ_TLSv1_0_2020_07.isSupported()) {
+        if (tlsCipherPreference.isSupported()) {
             LOG.info(() -> "Hybrid post-quantum ciphers are supported and will be used");
         } else {
             throw new UnsupportedOperationException("Hybrid post-quantum cipher suites are supported only on Linux systems");
         }
 
+        LOG.info(() -> "Using TLS Cipher Preference: " + tlsCipherPreference.name());
         /*
          * Set up a PQ TLS HTTP client that will be used in the rest of the example.
          */
         SdkAsyncHttpClient awsCrtHttpClient = AwsCrtAsyncHttpClient.builder()
-                .tlsCipherPreference(TlsCipherPreference.TLS_CIPHER_PREF_KMS_PQ_TLSv1_0_2020_07)
+                .tlsCipherPreference(tlsCipherPreference)
                 .build();
         /*
          * Set up a Java SDK 2.0 KMS Client which will use hybrid post-quantum TLS for all connections to KMS.
@@ -79,7 +84,6 @@ public class AwsKmsPqTlsExample {
         KmsAsyncClient asyncKMSClient = KmsAsyncClient.builder()
                 .httpClient(awsCrtHttpClient)
                 .build();
-
 
         /*
          * Import key material workflow with hybrid post-quantum TLS
