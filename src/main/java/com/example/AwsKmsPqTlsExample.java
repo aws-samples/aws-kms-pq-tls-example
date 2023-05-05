@@ -20,7 +20,6 @@ package com.example;
 
 import com.example.crypto.RSAUtils;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.crt.io.TlsCipherPreference;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.crt.AwsCrtAsyncHttpClient;
 import software.amazon.awssdk.services.kms.KmsAsyncClient;
@@ -46,8 +45,6 @@ import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.Random;
-
-import static software.amazon.awssdk.crt.io.TlsCipherPreference.*;
 
 /*
  * This Java code shows how to configure the AWS Java SDK 2.0 with the AWS Common Runtime (CRT) HTTP client and PQ
