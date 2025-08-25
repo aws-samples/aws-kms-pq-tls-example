@@ -20,12 +20,12 @@ package com.example;
 
 import com.example.crypto.RSAUtils;
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.crt.io.TlsCipherPreference;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.crt.AwsCrtAsyncHttpClient;
 import software.amazon.awssdk.services.kms.KmsAsyncClient;
 import software.amazon.awssdk.services.kms.model.AlgorithmSpec;
 import software.amazon.awssdk.services.kms.model.CreateKeyRequest;
-import software.amazon.awssdk.services.kms.model.CreateKeyResponse;
 import software.amazon.awssdk.services.kms.model.DataKeySpec;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
 import software.amazon.awssdk.services.kms.model.DecryptResponse;
@@ -63,89 +63,77 @@ public class AwsKmsPqTlsExample {
     private static final int AES_GCM_IV_BYTES = 12;
     private static final byte[] privateData = "MySecretData".getBytes();
 
+    public static byte[] generateSecureRandomBytes(int size) {
+        byte[] secureKey = new byte[size];
+        SECURE_RANDOM.nextBytes(secureKey);
+        return secureKey;
+    }
+
     public static void main(String[] args) throws Exception {
-        /*
-         * Set up a PQ TLS HTTP client that will be used in the rest of the example. This will optimistically enable
-         * hybrid post-quantum TLS if post-quantum algorithms are supported on the current platform, otherwise the
-         * default TLS configuration will be used.
-         */
+        // Check if the current platform supports Hybrid Post-Quantum TLS (Eg. X25519MLKEM768).
+        if(!TlsCipherPreference.TLS_CIPHER_PQ_DEFAULT.isSupported()){
+            throw new RuntimeException("PQ TLS is not Supported on the current platform.");
+        }
+
+        // Set up a PQ TLS HTTP client that will be used for the rest of the demo. This client will offer
+        // hybrid post-quantum TLS KeyShares to any TLS endpoints that it connects to.
         SdkAsyncHttpClient awsCrtHttpClient = AwsCrtAsyncHttpClient.builder()
                 .postQuantumTlsEnabled(true)
                 .build();
-        /*
-         * Set up a Java SDK 2.0 KMS Client which will use hybrid post-quantum TLS for all connections to KMS.
-         */
+
+        // Set up a KMS Client which will negotiate hybrid post-quantum TLS with KMS.
         KmsAsyncClient asyncKMSClient = KmsAsyncClient.builder()
                 .httpClient(awsCrtHttpClient)
                 .build();
 
-        /* The KeyId for the Customer Managed Key that we are importing into KMS. */
+        // The KeyId that we are creating and using throughout this demo.
         final String keyId;
 
-        /*
-         * Example #1: Import a locally generated AES key into KMS over a hybrid post-quantum TLS connection.
-         */
+        // Example #1: Import a locally generated AES key into KMS over a hybrid post-quantum TLS connection.
         {
-            /*
-             * Import key material workflow with hybrid post-quantum TLS
-             *
-             * Step 1: Create an external CMK with no key material
-             */
+            LOG.info(() -> "\nBeginning Example 1...");
+
+            // Step 1: Create an empty CustomerMangedKey (with no key material).
             CreateKeyRequest createRequest = CreateKeyRequest.builder()
                     .origin(OriginType.EXTERNAL)
                     .description("Test key for aws-kms-pq-tls-example. Feel free to delete this.")
                     .build();
-            CreateKeyResponse createResponse = asyncKMSClient.createKey(createRequest).get();
-            keyId = createResponse.keyMetadata().keyId();
-            LOG.info(() -> "Created CMK " + keyId);
+            keyId = asyncKMSClient.createKey(createRequest).get().keyMetadata().keyId();
+            LOG.info(() -> "Created empty CustomerManagedKey: " + keyId);
 
-            /*
-             * Step 2: Get the wrapping key and token required to import the local key material. The AlgorithmSpec determines
-             * how we must wrap the local key material using the public key from KMS.
-             */
+            // Step 2: Get the wrapping key and token required to import the local key material.
             GetParametersForImportRequest getParametersRequest = GetParametersForImportRequest.builder()
                     .keyId(keyId)
                     .wrappingAlgorithm(AlgorithmSpec.RSAES_OAEP_SHA_1)
                     .wrappingKeySpec(WrappingKeySpec.RSA_2048)
                     .build();
+
             GetParametersForImportResponse getParametersResponse =
                     asyncKMSClient.getParametersForImport(getParametersRequest).get();
 
-            /*
-             * Step 3: Prepare the parameters for the ImportKeyMaterial call.
-             */
             SdkBytes importToken = getParametersResponse.importToken();
-            byte[] publicKeyBytes = getParametersResponse.publicKey().asByteArray();
+            byte[] publicWrappingKey = getParametersResponse.publicKey().asByteArray();
 
             /*
-             * Create an ephemeral AES key. With KMS ImportKeyMaterial, you are responsible for keeping a durable copy of
-             * the key, so we recommend not doing this in production.
-             * https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html
+             * Step 3: Create an ephemeral AES key, and encrypt it with the public RSA wrapping key received from KMS.
              *
-             * The plaintextAesKey exists only for the lifetime of this function. This example key material will expire from
-             * KMS in 10 minutes. This is the 'validTo(Instant.now().plusSeconds(600))' in the ImportKeyMaterial call below.
+             * With KMS ImportKeyMaterial, you are responsible for keeping a durable copy of the key, so we recommend
+             * not doing this in production. https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html
              */
-            byte[] plaintextAesKey = new byte[AES_KEY_SIZE_BYTES];
-            SECURE_RANDOM.nextBytes(plaintextAesKey);
-
-            /*
-             * Use the wrapping key to encrypt the local key material. Then use the token to import the wrapped key
-             * material into KMS.
-             *
-             * This RSA wrapped key material is protected in transit with PQ TLS. If you use classic TLS, a large-scale
-             * quantum computer would be able to decrypt the TLS session data and recover the RSA-wrapped key material. Then
-             * it could decrypt the RSA-wrapped key to recover your plaintext AES key.
-             */
-            RSAPublicKey rsaPublicKey = RSAUtils.decodeX509PublicKey(publicKeyBytes);
+            byte[] plaintextAesKey = generateSecureRandomBytes(AES_KEY_SIZE_BYTES);
+            RSAPublicKey rsaPublicKey = RSAUtils.decodeX509PublicKey(publicWrappingKey);
             byte[] encryptedAesKey = RSAUtils.encryptRSA(rsaPublicKey, plaintextAesKey);
 
             /*
-             * Step 4: Import the key material using the CMK ID, wrapped key material, and import token. This is the
-             * important call to protect. Your AES key is leaving your computer and traveling over the network wrapped by an
-             * RSA public key and encrypted with PQ TLS.
+             * Step 4: Import the AES key material into KMS.
              *
-             * This AES key will be used for all KMS cryptographic operations when you use this CMK. If this key is
-             * compromised, all ciphertexts that use this CMK are also compromised.
+             * This is the important call to protect. Your AES key is leaving your client, traveling over the network,
+             * first wrapped by an RSA public key, and then also secured by a PQ TLS connection.
+             *
+             * If you used classical TLS, a large-scale quantum computer would be able to decrypt the TLS session data,
+             * recover the RSA-wrapped key material, decrypt the RSA-wrapped key, and recover your plaintext AES key.
+             *
+             * If this key is compromised, all ciphertexts that use this CMK are also compromised.
              */
             ImportKeyMaterialRequest importRequest = ImportKeyMaterialRequest.builder()
                     .keyId(keyId)
@@ -154,64 +142,59 @@ public class AwsKmsPqTlsExample {
                     .expirationModel(ExpirationModelType.KEY_MATERIAL_EXPIRES)
                     .validTo(Instant.now().plusSeconds(600))
                     .build();
-            LOG.info(() -> String.format("Importing key material into CMK %s. Using PQ TLS to protect RSA-wrapped AES key " +
-                    "in transit", keyId));
+            LOG.info(() -> String.format("Importing AES key into CustomerMangedKey: %s. (Using PQ TLS to protect RSA-wrapped AES key " +
+                    "in transit.)", keyId));
             asyncKMSClient.importKeyMaterial(importRequest).get();
         }
 
-        /*
-         * Example #2: Generate an encrypted DataKey, decrypt the DataKey using KMS, and use the DataKey to encrypt data locally.
-         */
+        // Example #2: Generate an encrypted DataKey, decrypt the DataKey using KMS, and use the DataKey to encrypt data locally.
         {
+            LOG.info(() -> "\nBeginning Example 2...");
             /*
-             * Use a KMS CMK to encrypt and decrypt data. The CMK can have any  origin (AWS_KMS, EXTERNAL, or AWS_CLOUDHSM).
-             * This example reuses the CMK with imported key material that we created in the previous step.
+             * Step 1: Generate a fresh data encryption key.
              *
-             * Step 1: Generate a data key. KMS GenerateDataKey returns the plaintext data key and a copy of that data key
-             * encrypted under the CMK using AES-GCM with 256-bit keys. It is your responsibility to keep the ciphertext so
-             * the plaintext data key can be decrypted in the future.
+             * KMS GenerateDataKey returns both the plaintext key, and a copy of that data key encrypted under the CMK.
+             * It is your responsibility to keep the ciphertext so it can be decrypted in the future.
              */
             GenerateDataKeyRequest generateDataKeyRequest = GenerateDataKeyRequest.builder()
                     .keyId(keyId)
                     .keySpec(DataKeySpec.AES_256)
                     .build();
-            LOG.info(() -> String.format("Generating a data key. Using PQ TLS to protect the plaintext data key in transit. " +
-                    "The encrypted data key is encrypted under the CMK %s", keyId));
+            LOG.info(() -> String.format("Generating a fresh data encryption key. (Using PQ TLS to protect the plaintext data key in transit.)"));
             GenerateDataKeyResponse generateDataKeyResponse = asyncKMSClient.generateDataKey(generateDataKeyRequest).get();
 
             /*
              * Step 2: Decrypt the encrypted data key.
+             *
+             * We have access to the plaintext data key within the lifetime of this function, but users are
+             * recommended to only store the ciphertext blob. Call KMS to decrypt the ciphertext as if we had stored
+             * only the ciphertext, and were calling to decrypt it at a later time.
              */
             SdkBytes encryptedDataKey = generateDataKeyResponse.ciphertextBlob();
             DecryptRequest decryptRequest = DecryptRequest.builder()
                     .ciphertextBlob(encryptedDataKey)
                     .build();
-            LOG.info(() -> "Decrypting a KMS ciphertext. Using PQ TLS to protect the plaintext data in transit");
-            DecryptResponse decryptResponse = asyncKMSClient.decrypt(decryptRequest).get();
-            byte[] plaintextDataKey = decryptResponse.plaintext().asByteArray();
+            LOG.info(() -> "Decrypting a KMS ciphertext. (Using PQ TLS to protect the plaintext data in transit.)");
+            byte[] plaintextDataKey = asyncKMSClient.decrypt(decryptRequest).get().plaintext().asByteArray();
 
-            /*
-             * Step 3: Use the plaintext data key to encrypt client-side data. You can get the plaintext data key by
-             * calling decryptResponse.plaintext(). Here we encrypt the contents of privateData, but your use case
-             * will differ.
-             */
-            byte[] iv = new byte[AES_GCM_IV_BYTES];
-            SECURE_RANDOM.nextBytes(iv);
+            // Step 3: Use the plaintext data key to encrypt some client-side data.
+            byte[] iv = generateSecureRandomBytes(AES_GCM_IV_BYTES);
             Cipher aesEncrypt = Cipher.getInstance("AES/GCM/NoPadding");
             aesEncrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(plaintextDataKey, "AES"), new GCMParameterSpec(AES_TAG_SIZE_BITS, iv));
             byte[] encryptedData = aesEncrypt.doFinal(privateData);
-            LOG.info(() -> "Encrypted privateData with data encryption key.");
+            LOG.info(() -> "Locally encrypted privateData with data encryption key.");
 
-            /*
-             * Step 4: Use the plaintext data key to decrypt client-side data. You can get the plaintext data key by
-             * calling decryptResponse.plaintext(). Here we decrypt the contents of encryptedData, but your use case
-             * will differ.
-             */
+            // Step 4: Use the plaintext data key to decrypt client-side data.
             Cipher aesDecrypt = Cipher.getInstance("AES/GCM/NoPadding");
             aesDecrypt.init(Cipher.DECRYPT_MODE, new SecretKeySpec(plaintextDataKey, "AES"), new GCMParameterSpec(AES_TAG_SIZE_BITS, iv));
             byte[] decryptedData = aesDecrypt.doFinal(encryptedData);
             boolean decryptedSuccessfully = Arrays.equals(privateData, decryptedData);
-            LOG.info(() -> String.format("Decrypted data with data encryption key. decryptedSuccessfully: %b", decryptedSuccessfully));
+
+            if (!decryptedSuccessfully) {
+                throw new RuntimeException("Decrypted data does not match encrypted data");
+            }
+
+            LOG.info(() -> String.format("Locally decrypted data with data encryption key."));
         }
 
         /*
@@ -221,12 +204,13 @@ public class AwsKmsPqTlsExample {
          * test, we will delete it as part of cleanup. After the CMK is deleted, any ciphertexts encrypted under
          * this CMK are permanently unrecoverable.
          */
+        LOG.info(() -> "\nEnd of Demo. Cleaning up KMS resources...");
         ScheduleKeyDeletionRequest deletionRequest = ScheduleKeyDeletionRequest.builder()
                 .keyId(keyId)
                 .pendingWindowInDays(7)
                 .build();
         ScheduleKeyDeletionResponse deletionResult = asyncKMSClient.scheduleKeyDeletion(deletionRequest).get();
-        LOG.info(() -> String.format("CMK %s is scheduled to be deleted at %s", keyId, deletionResult.deletionDate()));
+        LOG.info(() -> String.format("CustomerManagedKey %s is scheduled to be deleted at %s", keyId, deletionResult.deletionDate()));
 
         /*
          * Shut down the SDK and HTTP client. This will free any Java and native resources created for the demo.
