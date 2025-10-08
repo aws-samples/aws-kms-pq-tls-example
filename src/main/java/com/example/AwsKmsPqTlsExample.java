@@ -75,13 +75,12 @@ public class AwsKmsPqTlsExample {
             throw new RuntimeException("PQ TLS is not Supported on the current platform.");
         }
 
-        // Set up a PQ TLS HTTP client that will be used for the rest of the demo. This client will offer
-        // hybrid post-quantum TLS KeyShares to any TLS endpoints that it connects to.
+        // Set up a PQ TLS HTTP client that will be used when connecting to AWS
         SdkAsyncHttpClient awsCrtHttpClient = AwsCrtAsyncHttpClient.builder()
                 .postQuantumTlsEnabled(true)
                 .build();
 
-        // Set up a KMS Client which will negotiate hybrid post-quantum TLS with KMS.
+        // Set up a KMS Client which will offer hybrid post-quantum TLS with KMS.
         KmsAsyncClient asyncKMSClient = KmsAsyncClient.builder()
                 .httpClient(awsCrtHttpClient)
                 .build();
@@ -99,7 +98,7 @@ public class AwsKmsPqTlsExample {
                     .description("Test key for aws-kms-pq-tls-example. Feel free to delete this.")
                     .build();
             keyId = asyncKMSClient.createKey(createRequest).get().keyMetadata().keyId();
-            LOG.info(() -> "Created empty CustomerManagedKey: " + keyId);
+            LOG.info(() -> "1. KMS created empty CustomerManagedKey: " + keyId);
 
             // Step 2: Get the wrapping key and token required to import the local key material.
             GetParametersForImportRequest getParametersRequest = GetParametersForImportRequest.builder()
@@ -113,6 +112,7 @@ public class AwsKmsPqTlsExample {
 
             SdkBytes importToken = getParametersResponse.importToken();
             byte[] publicWrappingKey = getParametersResponse.publicKey().asByteArray();
+            LOG.info(() -> "2. KMS sent a fresh RSA public wrapping key to client. (Using PQ TLS to protect the RSA key in transit to client.)");
 
             /*
              * Step 3: Create an ephemeral AES key, and encrypt it with the public RSA wrapping key received from KMS.
@@ -123,6 +123,7 @@ public class AwsKmsPqTlsExample {
             byte[] plaintextAesKey = generateSecureRandomBytes(AES_KEY_SIZE_BYTES);
             RSAPublicKey rsaPublicKey = RSAUtils.decodeX509PublicKey(publicWrappingKey);
             byte[] encryptedAesKey = RSAUtils.encryptRSA(rsaPublicKey, plaintextAesKey);
+            LOG.info(() -> "3. Client generated a fresh AES key, and encrypted AES key with KMS's public RSA wrapping key.");
 
             /*
              * Step 4: Import the AES key material into KMS.
@@ -142,8 +143,8 @@ public class AwsKmsPqTlsExample {
                     .expirationModel(ExpirationModelType.KEY_MATERIAL_EXPIRES)
                     .validTo(Instant.now().plusSeconds(600))
                     .build();
-            LOG.info(() -> String.format("Importing AES key into CustomerMangedKey: %s. (Using PQ TLS to protect RSA-wrapped AES key " +
-                    "in transit.)", keyId));
+            LOG.info(() -> String.format("4. KMS imported AES key into CustomerMangedKey. (Using PQ TLS to protect RSA-wrapped AES key " +
+                    "in transit to KMS.)"));
             asyncKMSClient.importKeyMaterial(importRequest).get();
         }
 
@@ -160,7 +161,7 @@ public class AwsKmsPqTlsExample {
                     .keyId(keyId)
                     .keySpec(DataKeySpec.AES_256)
                     .build();
-            LOG.info(() -> String.format("Generating a fresh data encryption key. (Using PQ TLS to protect the plaintext data key in transit.)"));
+            LOG.info(() -> String.format("1. KMS sent fresh DataEncryptionKey (wrapped by CMK) to client. (Using PQ TLS to protect DataEncryptionKey in transit to client.)"));
             GenerateDataKeyResponse generateDataKeyResponse = asyncKMSClient.generateDataKey(generateDataKeyRequest).get();
 
             /*
@@ -174,7 +175,7 @@ public class AwsKmsPqTlsExample {
             DecryptRequest decryptRequest = DecryptRequest.builder()
                     .ciphertextBlob(encryptedDataKey)
                     .build();
-            LOG.info(() -> "Decrypting a KMS ciphertext. (Using PQ TLS to protect the plaintext data in transit.)");
+            LOG.info(() -> "2. Client issued request to KMS to decrypt DataEncryptionKey. (Using PQ TLS to protect DataEncryptionKey in transit to client.)");
             byte[] plaintextDataKey = asyncKMSClient.decrypt(decryptRequest).get().plaintext().asByteArray();
 
             // Step 3: Use the plaintext data key to encrypt some client-side data.
@@ -182,7 +183,7 @@ public class AwsKmsPqTlsExample {
             Cipher aesEncrypt = Cipher.getInstance("AES/GCM/NoPadding");
             aesEncrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(plaintextDataKey, "AES"), new GCMParameterSpec(AES_TAG_SIZE_BITS, iv));
             byte[] encryptedData = aesEncrypt.doFinal(privateData);
-            LOG.info(() -> "Locally encrypted privateData with data encryption key.");
+            LOG.info(() -> "3. Client encrypted local data with DataEncryptionKey.");
 
             // Step 4: Use the plaintext data key to decrypt client-side data.
             Cipher aesDecrypt = Cipher.getInstance("AES/GCM/NoPadding");
@@ -194,7 +195,7 @@ public class AwsKmsPqTlsExample {
                 throw new RuntimeException("Decrypted data does not match encrypted data");
             }
 
-            LOG.info(() -> String.format("Locally decrypted data with data encryption key."));
+            LOG.info(() -> String.format("4. Client decrypted local data with DataEncryptionKey."));
         }
 
         /*
@@ -210,7 +211,7 @@ public class AwsKmsPqTlsExample {
                 .pendingWindowInDays(7)
                 .build();
         ScheduleKeyDeletionResponse deletionResult = asyncKMSClient.scheduleKeyDeletion(deletionRequest).get();
-        LOG.info(() -> String.format("CustomerManagedKey %s is scheduled to be deleted at %s", keyId, deletionResult.deletionDate()));
+        LOG.info(() -> String.format("1. KMS has scheduled CustomerManagedKey %s to be deleted at %s", keyId, deletionResult.deletionDate()));
 
         /*
          * Shut down the SDK and HTTP client. This will free any Java and native resources created for the demo.
